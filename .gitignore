@@ -1,0 +1,17 @@
+# Created by .ignore support plugin (hsz.mobi)
+### Scala template
+*.log
+
+# sbt specific
+.cache
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# intelliJ
+.idea/
+project/project/

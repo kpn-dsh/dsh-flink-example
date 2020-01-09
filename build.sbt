@@ -1,0 +1,15 @@
+lazy val buildSettings = Seq(
+  name                 := "flink",
+  packageDescription   := "DSH Flink Example",
+  organization         := "dsh",
+  scalaVersion         := "2.11.12",
+  assemblyJarName in assembly := s"flink-example-${Version.Flink}.jar"
+)
+
+lazy val root = (project in file("."))
+  .enablePlugins(KlarrioDefaultsPlugin)
+  .settings(buildSettings)
+  .settings(
+    libraryDependencies ++= KlarrioDependencyGroups.loggingForApp,
+    libraryDependencies ++= Seq(Library.FlinkStreaming, Library.FLinkMetrics)
+  )
