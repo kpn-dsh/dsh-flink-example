@@ -3,6 +3,7 @@ lazy val buildSettings = Seq(
   packageDescription   := "DSH Flink Example",
   organization         := "dsh",
   scalaVersion         := "2.11.12",
+  mainClass in Compile := Some("dsh.flink.example.HelloWorld"),
   assemblyJarName in assembly := s"flink-example-${Version.Flink}.jar"
 )
 
