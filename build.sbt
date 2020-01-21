@@ -12,5 +12,5 @@ lazy val root = (project in file("."))
   .settings(buildSettings)
   .settings(
     libraryDependencies ++= KlarrioDependencyGroups.loggingForApp,
-    libraryDependencies ++= Seq(Library.FlinkStreaming, Library.FLinkMetrics)
+    libraryDependencies ++= Seq(Library.FlinkStreaming, Library.FLinkMetrics, Library.FlinkKafka)
   )
