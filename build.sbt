@@ -1,5 +1,5 @@
 lazy val buildSettings = Seq(
-  name                 := "flink",
+  name                 := "flink-example",
   packageDescription   := "DSH Flink Example",
   organization         := "dsh",
   scalaVersion         := "2.11.12",

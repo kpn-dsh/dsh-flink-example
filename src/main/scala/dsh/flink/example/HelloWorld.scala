@@ -1,7 +1,7 @@
 package dsh.flink.example
 
 import java.nio.charset.StandardCharsets
-import java.util.Properties
+import java.util
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
 import com.codahale.metrics.{ExponentiallyDecayingReservoir, Histogram => CodaHist, Meter => CodaMeter}
@@ -10,13 +10,15 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.dropwizard.metrics.{DropwizardHistogramWrapper, DropwizardMeterWrapper}
 import org.apache.flink.metrics.{Histogram, Meter}
+import org.apache.flink.streaming.api.checkpoint.ListCheckpointed
 import org.apache.flink.streaming.api.functions.sink.{RichSinkFunction, SinkFunction}
 import org.apache.flink.streaming.api.functions.source.{RichParallelSourceFunction, SourceFunction}
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
-import org.apache.kafka.clients.producer.{KafkaProducer, Producer}
-
+import java.util.{List => JList}
 import scala.collection.JavaConverters._
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.annotation.tailrec
 import scala.util.Try
 
@@ -24,6 +26,8 @@ object HelloWorld {
   def main(args: Array[String]): Unit = {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setParallelism(2)
+
+    env.enableCheckpointing(1000)
 
     val kafkaSink = new FlinkKafkaProducer011[Long](
       "scratch.flink.dshtest",
@@ -84,10 +88,11 @@ class BlackHole extends RichSinkFunction[Long] {
 }
 
 case class Tick(ts: Long)
-class ClockSource extends RichParallelSourceFunction[Tick] {
+class ClockSource extends RichParallelSourceFunction[Tick] with ListCheckpointed[java.lang.Long] with LazyLogging {
   private var running = false
   @transient private var meter: Meter = _
   @transient private var scheduler: ScheduledThreadPoolExecutor = _
+  @transient private var offset = 0L
 
   override def open(parameters: Configuration): Unit = {
     meter = getRuntimeContext.getMetricGroup.meter("clock.ticks", new DropwizardMeterWrapper(new CodaMeter))
@@ -103,13 +108,27 @@ class ClockSource extends RichParallelSourceFunction[Tick] {
   override def close(): Unit = Option(scheduler).foreach(_.shutdown())
 
   override def run(ctx: SourceFunction.SourceContext[Tick]): Unit = {
-    @tailrec def whileRunning(block: => Unit): Unit = if (running) { block; whileRunning(block) }
+    val lock = ctx.getCheckpointLock
+    @tailrec def runner(block: => Unit): Unit = if (running) { lock.synchronized(block); runner(block) }
 
-    whileRunning {
-      ctx.collect(Tick(System.currentTimeMillis()))
+    logger.info(s"STARTING CLOCK SOURCE @ OFFSET: $offset")
+
+    runner {
+      ctx.collect(Tick(offset))
+      offset += 1
       meter.markEvent()
     }
   }
 
   override def cancel(): Unit = running = false
+
+  override def snapshotState(checkpointId: Long, timestamp: Long): JList[java.lang.Long] = {
+    logger.info(s"SNAPSHOTTING - CLOCK SOURCE @ OFFSET: $offset, id: $checkpointId")
+    List(Long.box(offset)).asJava
+  }
+
+  override def restoreState(state: JList[java.lang.Long]): Unit = {
+    logger.info(s"RESTORING SNAPSHOT - CLOCK SOURCE @ OFFSET: $offset -- STATE: ${state.asScala.mkString(",")}")
+    state.asScala.foreach(offset = _)
+  }
 }
