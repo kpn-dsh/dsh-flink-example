@@ -29,14 +29,14 @@ object HelloWorld {
 
     env.enableCheckpointing(1000)
 
-    val kafkaSink = new FlinkKafkaProducer011[Long](
+    lazy val kafkaSink = new FlinkKafkaProducer011[Long](
       "scratch.flink.dshtest",
       new SerializationSchema[Long]() {
         override def serialize(element: Long): Array[Byte] = ("PAYLOAD TIMESTAMP: " + element).getBytes(StandardCharsets.UTF_8)
       },
       ConfigMgr.producerConfig)
 
-    val kafkaSource = new FlinkKafkaConsumer011[String](
+    lazy val kafkaSource = new FlinkKafkaConsumer011[String](
       "scratch.flink.dshtest",
       new DeserializationSchema[String]() {
         override def deserialize(message: Array[Byte]): String = new String(message)
@@ -46,17 +46,21 @@ object HelloWorld {
       ConfigMgr.consumerConfig)
 
     // stream -- 1
+    lazy val sink = ConfigMgr.onValidConfig(ConfigMgr.producerConfig)(kafkaSink).getOrElse(new BlackHole)
+
     env
       .addSource(new ClockSource).name("Clock")
       .map(tick => tick.ts).name("extract tick")
-      .addSink(kafkaSink).name("ToKafka")
+      .addSink(sink).name("ToKafka (or void)")
 
     // stream -- 2
-    env
-      .addSource(kafkaSource).name("FromKafka")
-      .map(str => str.split(':').last).name("extract clock")
-      .map(nr => Try(nr.toLong).getOrElse(-1L))
-      .addSink(new BlackHole).name("Swallow")
+    ConfigMgr.onValidConfig(ConfigMgr.consumerConfig) {
+      env
+        .addSource(kafkaSource).name("FromKafka")
+        .map(str => str.split(':').last).name("extract clock")
+        .map(nr => Try(nr.toLong).getOrElse(-1L))
+        .addSink(new BlackHole).name("Swallow")
+    }
 
     env.execute("FLINK -- Hello World")
   }

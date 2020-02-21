@@ -3,29 +3,49 @@ package dsh.flink.example
 import java.io.FileInputStream
 import java.util.Properties
 
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
 
+import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
+
 /** */
 object ConfigMgr {
 
-  val systemProps = {
+  lazy val systemProps: Properties = {
     val props = new Properties()
-    props.load(new FileInputStream(sys.props.get("platform.properties.file").get))
+    sys.props.get("platform.properties.file")
+      .map(new FileInputStream(_))
+      .foreach(props.load)
+
     props
+  }
+
+  private def addCommonKafkaProps(props: Properties): Properties = {
+    props.putAll(
+      Seq("bootstrap.servers", "security.protocol", "ssl.truststore.location", "ssl.truststore.password", "ssl.keystore.location", "ssl.keystore.password", "ssl.key.password")
+        .flatMap(key => Option(systemProps.get(key)).map(key -> _))
+        .toMap
+        .asJava)
+    props
+  }
+
+  def onValidConfig[T](props: Properties)(block: => T): Try[T] = {
+    Option(props.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)).filter(_.nonEmpty).map(_ => Success(block)).getOrElse(Failure(new IllegalArgumentException): Try[T])
   }
 
   lazy val producerConfig: Properties = {
-    val props = new Properties()
-    Seq("bootstrap.servers", "security.protocol", "ssl.truststore.location", "ssl.truststore.password", "ssl.keystore.location", "ssl.keystore.password", "ssl.key.password").foreach { key => props.put(key, systemProps.get(key)) }
-    props
+    addCommonKafkaProps(new Properties)
   }
 
   lazy val consumerConfig: Properties = {
-    val props = new Properties()
-    Seq("bootstrap.servers", "security.protocol", "ssl.truststore.location", "ssl.truststore.password", "ssl.keystore.location", "ssl.keystore.password", "ssl.key.password").foreach { key => props.put(key, systemProps.get(key)) }
-    props.put(ConsumerConfig.GROUP_ID_CONFIG, systemProps.getProperty("consumerGroups.shared").split(',').toSeq.min)
+    val props = addCommonKafkaProps(new Properties)
+    Option(systemProps.getProperty("consumerGroups.shared"))
+      .map(cgs => cgs.split(',').toSeq.min)
+      .foreach(props.put(ConsumerConfig.GROUP_ID_CONFIG, _))
+
     props
   }
 }
