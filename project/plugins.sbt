@@ -3,4 +3,4 @@ resolvers := Seq(
   "Artifactory klarrio" at "https://klarrio.jfrog.io/klarrio/jvm-libs/"
 )
 
-addSbtPlugin("com.klarrio" % "klarrio-sbt-plugin" % "2.1.7")
+addSbtPlugin("com.klarrio" % "klarrio-sbt-plugin" % "2.1.10")

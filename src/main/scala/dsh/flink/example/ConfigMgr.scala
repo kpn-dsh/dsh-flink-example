@@ -1,51 +1,36 @@
 package dsh.flink.example
 
-import java.io.FileInputStream
 import java.util.Properties
 
-import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.StringSerializer
-
-import scala.util.{Failure, Success, Try}
+import com.typesafe.config.ConfigFactory
+import dsh.kafka.KafkaParser
+import dsh.kafka.KafkaParser.ConsumerGroupType
+import dsh.messages.Envelope
+import dsh.sdk.Sdk
+import dsh.streams.StreamsParser
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import scala.collection.JavaConverters._
 
 /** */
 object ConfigMgr {
 
-  lazy val systemProps: Properties = {
-    val props = new Properties()
-    sys.props.get("platform.properties.file")
-      .map(new FileInputStream(_))
-      .foreach(props.load)
+  @transient private lazy val sdk: Sdk = new Sdk.Builder().autoDetect().build()
+  @transient private lazy val kafkaParser = KafkaParser.of(sdk)
+  @transient private lazy val streamParser = StreamsParser.of(sdk)
 
-    props
-  }
+  def producerConfig: Properties = kafkaParser.kafkaProducerProperties(null)
 
-  private def addCommonKafkaProps(props: Properties): Properties = {
-    props.putAll(
-      Seq("bootstrap.servers", "security.protocol", "ssl.truststore.location", "ssl.truststore.password", "ssl.keystore.location", "ssl.keystore.password", "ssl.key.password")
-        .flatMap(key => Option(systemProps.get(key)).map(key -> _))
-        .toMap
-        .asJava)
-    props
-  }
+  def consumerConfig: Properties = KafkaParser.addConsumerGroup(
+    kafkaParser.suggestedConsumerGroup(ConsumerGroupType.SHARED),
+    kafkaParser.kafkaConsumerProperties(null))
 
-  def onValidConfig[T](props: Properties)(block: => T): Try[T] = {
-    Option(props.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)).filter(_.nonEmpty).map(_ => Success(block)).getOrElse(Failure(new IllegalArgumentException): Try[T])
-  }
+  def streams: StreamsParser = streamParser
 
-  lazy val producerConfig: Properties = {
-    addCommonKafkaProps(new Properties)
-  }
+  def identity: Envelope.Identity = sdk.getApp.identity()
 
-  lazy val consumerConfig: Properties = {
-    val props = addCommonKafkaProps(new Properties)
-    Option(systemProps.getProperty("consumerGroups.shared"))
-      .map(cgs => cgs.split(',').toSeq.min)
-      .foreach(props.put(ConsumerConfig.GROUP_ID_CONFIG, _))
+  private lazy val config = ConfigFactory.load()
 
-    props
-  }
+  lazy val key: String = config.getString("stream.key")
+  lazy val input: String = config.getString("stream.in")
+  lazy val output: String = config.getString("stream.out")
 }
