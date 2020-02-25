@@ -36,7 +36,7 @@ object KafkaUtils extends LazyLogging {
         .setHeader(Envelope.KeyHeader.newBuilder
           .setIdentifier(ConfigMgr.identity)
           .setQos(QoS.RELIABLE)
-          .setRetained(true) )
+          .setRetained(true))
         .build()
         .toByteArray
 
