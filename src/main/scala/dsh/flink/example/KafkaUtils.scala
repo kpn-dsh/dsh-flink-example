@@ -53,7 +53,7 @@ object KafkaUtils extends LazyLogging {
 
   private def consumerSerde: KeyedDeserializationSchema[Clock.Tick] = new KeyedDeserializationSchema[Clock.Tick] {
     override def deserialize(messageKey: Array[Byte], message: Array[Byte], topic: String, partition: Int, offset: Long): Clock.Tick = {
-      logger.info(s"KAFKA: received data - topic:'$topic', partition:$partition, offset:$offset - key-size: ${messageKey.length}, value-size: ${message.length} ")
+      logger.info(s"KAFKA: received data - topic:'$topic', partition:$partition, offset:$offset - key-size: ${Option(messageKey).map(_.length).orNull}, value-size: ${Option(message).map(_.length).orNull} ")
       KeyValue(messageKey, message)
         .map { case (keyEnv, dataEnv) if keyEnv.getKey.equals(ConfigMgr.key) => dataEnv.getPayload.toStringUtf8 }
         .flatMap(content => Try(content.toLong))
