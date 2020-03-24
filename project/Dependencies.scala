@@ -2,7 +2,7 @@ import sbt._
 
 object Version {
   final val Flink  = "1.6.4"
-  final val Sdk    = "0.1.0-M1"
+  final val Sdk    = "0.1.0"
   final val Config = "1.4.0"
 }
 

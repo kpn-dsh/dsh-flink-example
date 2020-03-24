@@ -5,6 +5,8 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction
 import org.apache.flink.streaming.api.scala._
 import org.apache.kafka.clients.CommonClientConfigs
 
+import scala.concurrent.duration.DurationInt
+
 /**
  *
  */
@@ -13,7 +15,7 @@ object HelloWorld extends LazyLogging {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setParallelism(2)
-    env.enableCheckpointing(1000)
+    env.enableCheckpointing(5.minutes.toMillis)
 
     lazy val sink: RichSinkFunction[(String, Clock.Tick)] = Option(ConfigMgr.producerConfig)
       .filter(_.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG))

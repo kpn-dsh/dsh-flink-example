@@ -3,28 +3,26 @@ package dsh.flink.example
 import java.util.Properties
 
 import com.typesafe.config.ConfigFactory
-import dsh.kafka.KafkaParser
-import dsh.kafka.KafkaParser.ConsumerGroupType
 import dsh.messages.Envelope
 import dsh.sdk.Sdk
-import dsh.streams.StreamsParser
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import scala.collection.JavaConverters._
+import dsh.sdk.kafka.KafkaConfigParser
+import dsh.sdk.kafka.KafkaConfigParser.ConsumerGroupType
+import dsh.sdk.streams.StreamsConfigParser
 
 /** */
 object ConfigMgr {
 
   @transient private lazy val sdk: Sdk = new Sdk.Builder().autoDetect().build()
-  @transient private lazy val kafkaParser = KafkaParser.of(sdk)
-  @transient private lazy val streamParser = StreamsParser.of(sdk)
+  @transient private lazy val kafkaParser = KafkaConfigParser.of(sdk)
+  @transient private lazy val streamParser = StreamsConfigParser.of(sdk)
 
   def producerConfig: Properties = kafkaParser.kafkaProducerProperties(null)
 
-  def consumerConfig: Properties = KafkaParser.addConsumerGroup(
+  def consumerConfig: Properties = KafkaConfigParser.addConsumerGroup(
     kafkaParser.suggestedConsumerGroup(ConsumerGroupType.SHARED),
     kafkaParser.kafkaConsumerProperties(null))
 
-  def streams: StreamsParser = streamParser
+  def streams: StreamsConfigParser = streamParser
 
   def identity: Envelope.Identity = sdk.getApp.identity()
 

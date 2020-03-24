@@ -4,9 +4,9 @@ import java.util.{Optional, Properties}
 
 import com.google.protobuf.ByteString
 import com.typesafe.scalalogging.LazyLogging
-import dsh.kafka.partitioners.DshStreamPartitioner
 import dsh.messages.Envelope.{DataEnvelope, KeyEnvelope, QoS}
 import dsh.messages.{DataStream, Envelope}
+import dsh.sdk.kafka.partitioners.DshStreamPartitioner
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}

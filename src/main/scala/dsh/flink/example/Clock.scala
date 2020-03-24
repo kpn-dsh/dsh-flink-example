@@ -1,6 +1,5 @@
 package dsh.flink.example
 
-import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 import java.util.{List => JList}
 
 import com.codahale.metrics.{Meter => CodaMeter}
